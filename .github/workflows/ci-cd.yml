@@ -16,6 +16,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Set lowercase owner
+        run: echo "OWNER_LC=${GITHUB_REPOSITORY_OWNER,,}" >> $GITHUB_ENV
+
       - name: Checkout code
         uses: actions/checkout@v4
 
@@ -35,13 +38,13 @@ jobs:
 
       - name: Build Docker images
         run: |
-          docker build -t ${{ env.API_IMAGE }}:${{ github.sha }} ./OrderApi
-          docker build -t ${{ env.WORKER_IMAGE }}:${{ github.sha }} ./InventoryWorker
+          docker build -t ghcr.io/${{ env.OWNER_LC }}/orderflow-api:${{ github.sha }} ./OrderApi
+          docker build -t ghcr.io/${{ env.OWNER_LC }}/orderflow-worker:${{ github.sha }} ./InventoryWorker
 
       - name: Scan API image with Trivy
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: ${{ env.API_IMAGE }}:${{ github.sha }}
+          image-ref: ghcr.io/${{ env.OWNER_LC }}/orderflow-api:${{ github.sha }}
           format: table
           exit-code: 1
           severity: CRITICAL,HIGH
@@ -49,7 +52,7 @@ jobs:
       - name: Scan Worker image with Trivy
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: ${{ env.WORKER_IMAGE }}:${{ github.sha }}
+          image-ref: ghcr.io/${{ env.OWNER_LC }}/orderflow-worker:${{ github.sha }}
           format: table
           exit-code: 1
           severity: CRITICAL,HIGH
@@ -65,10 +68,10 @@ jobs:
       - name: Push images
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
-          docker push ${{ env.API_IMAGE }}:${{ github.sha }}
-          docker push ${{ env.WORKER_IMAGE }}:${{ github.sha }}
+          docker push ghcr.io/${{ env.OWNER_LC }}/orderflow-api:${{ github.sha }}
+          docker push ghcr.io/${{ env.OWNER_LC }}/orderflow-worker:${{ github.sha }}
 
-          docker tag ${{ env.API_IMAGE }}:${{ github.sha }} ${{ env.API_IMAGE }}:latest
-          docker tag ${{ env.WORKER_IMAGE }}:${{ github.sha }} ${{ env.WORKER_IMAGE }}:latest
-          docker push ${{ env.API_IMAGE }}:latest
-          docker push ${{ env.WORKER_IMAGE }}:latest
+          docker tag ghcr.io/${{ env.OWNER_LC }}/orderflow-api:${{ github.sha }} ghcr.io/${{ env.OWNER_LC }}/orderflow-api:latest
+          docker tag ghcr.io/${{ env.OWNER_LC }}/orderflow-worker:${{ github.sha }} ghcr.io/${{ env.OWNER_LC }}/orderflow-worker:latest
+          docker push ghcr.io/${{ env.OWNER_LC }}/orderflow-api:latest
+          docker push ghcr.io/${{ env.OWNER_LC }}/orderflow-worker:latest
