@@ -1,0 +1,77 @@
+version: "3.8"
+services:
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: orderflow-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: orderflow
+      RABBITMQ_DEFAULT_PASS: orderflow123
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.13.0
+    container_name: orderflow-elastic
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+    healthcheck:
+      test: curl -s http://localhost:9200/_cluster/health | grep -q '"status"'
+      interval: 15s
+      timeout: 10s
+      retries: 5
+    volumes:
+      - elastic_data:/usr/share/elasticsearch/data
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.13.0
+    container_name: orderflow-kibana
+    ports:
+      - "5601:5601"
+    environment:
+      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+  orderapi:
+    build:
+      context: ./OrderApi
+    container_name: orderflow-api
+    ports:
+      - "5100:8080"
+    environment:
+      RabbitMQ__Host: rabbitmq
+      RabbitMQ__User: orderflow
+      RabbitMQ__Pass: orderflow123
+      ElasticSearch__Uri: http://elasticsearch:9200
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+  inventoryworker:
+    build:
+      context: ./InventoryWorker
+    container_name: orderflow-worker
+    environment:
+      RabbitMQ__Host: rabbitmq
+      RabbitMQ__User: orderflow
+      RabbitMQ__Pass: orderflow123
+      ElasticSearch__Uri: http://elasticsearch:9200
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+volumes:
+  rabbitmq_data:
+  elastic_data:
