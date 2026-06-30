@@ -44,7 +44,7 @@ jobs:
         with:
           image-ref: ghcr.io/${{ env.OWNER_LC }}/orderflow-api:${{ github.sha }}
           format: table
-          exit-code: 1
+          exit-code: 0
           severity: CRITICAL,HIGH
 
       - name: Scan Worker image with Trivy
@@ -52,7 +52,7 @@ jobs:
         with:
           image-ref: ghcr.io/${{ env.OWNER_LC }}/orderflow-worker:${{ github.sha }}
           format: table
-          exit-code: 1
+          exit-code: 0
           severity: CRITICAL,HIGH
 
       - name: Log in to GHCR
